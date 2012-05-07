@@ -531,13 +531,34 @@ void rf24::resetFailedSends()
  */
 void rf24::setRxAddr(uint8_t id, const void *addr)
 {
-    chipEnable();
+    boolean ceSet;
+    uint8_t reg;
+
+    ceSet = digitalRead(cePin);
+    chipDisable();
     if (id < 2) {
 	writeReg(RX_ADDR_P0+id, (const uint8_t *)addr, RF24_ADDR_LEN);
     } else {
 	writeReg(RX_ADDR_P0+id, ((uint8_t *)addr)[4]);
     }
+    /* Enable data pipe */
+    reg = readReg(EN_RXADDR);
+    reg |= (1 << id);
+    writeReg(EN_RXADDR, reg);
+    digitalWrite(cePin, ceSet);
+}
+
+void rf24::disableQueue(uint8_t id)
+{
+    boolean ceSet;
+    uint8_t reg;
+
+    ceSet = digitalRead(cePin);
     chipDisable();
+    reg = readReg(EN_RXADDR);
+    reg &= ~(1 << id);
+    writeReg(EN_RXADDR, reg);
+    digitalWrite(cePin, ceSet);
 }
 
 /** Set the transmit address. Also sets the receive address to the same 
@@ -584,7 +605,7 @@ void rf24::enableAck(uint16_t delay, uint8_t retry)
 	delay = 15; /* Max 4000us */
     }
 
-    writeReg(EN_AA, 0x3F); /* enable auto-ack */
+    writeReg(EN_AA, 0x3F); /* enable auto-ack on all pipes */
     writeReg(SETUP_RETR, (delay << 4) | (retry & 0x0F));
 
     /* 
@@ -883,11 +904,18 @@ void rf24::send(void *data, uint8_t size)
  */
 void rf24::read(void *data, uint8_t size) 
 {
+    lastQueue = readQueue();
     chipSelect();
     transfer(R_RX_PAYLOAD);
     rx((uint8_t *)data, packetSize, size);
     chipDeselect();
     writeReg(STATUS, 1<<RX_DR);  // Acknowledge RX interrupt
+}
+
+/** Return which RX queue the incoming RX FIFO data is destined for. */
+uint8_t rf24::readQueue()
+{
+    return ( (readReg(STATUS) >> RX_P_NO) & 0x07 );
 }
 
 /** See if the device is contactable and registers readable

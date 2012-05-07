@@ -106,6 +106,7 @@ public:
     void setCRCOff(void);
 
     void setRxAddr(uint8_t id, const void *addr);
+    void disableQueue(uint8_t id);
     void setTxAddr(const void *addr);
     void setPacketSize(uint8_t size);
     uint8_t getPacketSize();
@@ -158,6 +159,7 @@ public:
 
     uint8_t cePin;
     uint8_t csnPin;
+    uint8_t lastQueue;  // Data pipe of the last read() performed.
   private:
     RFDebug debug;	// debug print
 
