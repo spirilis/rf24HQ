@@ -126,7 +126,9 @@ boolean rf24::begin(uint32_t dataRate, Print *debugPrint)
     return true;
 }
 
-/** Default begin() variant gives a default datarate of 1Mbps */
+/** Default begin() variant gives a default datarate of 1Mbps
+ * @param debugPrint optional debug print stream.
+ */
 boolean rf24::begin(Print *debugPrint)
 {
     return begin(1000000, debugPrint);
@@ -136,6 +138,7 @@ boolean rf24::begin(Print *debugPrint)
 
 
 /** Serial Peripheral Interface I/O functions */
+
 uint8_t rf24::transfer(uint8_t data)
 {
     return SPI.transfer(data);
@@ -216,7 +219,10 @@ void rf24::tx(const void *data, uint8_t len, uint8_t max)
     }
 }
 
-/** Send register data - LSBFirst */
+/** Send register data - LSBFirst
+ * @param data the data to send
+ * @param len number of bytes to send
+ */
 void rf24::txlsbfirst(const void *data, uint8_t len)
 {
     for (uint8_t ind=0; ind<len; ind++) {
@@ -241,7 +247,12 @@ void rf24::rx(void *data, uint8_t len, uint8_t max)
     }
 }
 
-/** Send and receive data */
+/** Send and receive data
+ * @param txdata buffer containing data to send
+ * @param rxdata buffer to write newly received data
+ * @param len size of data to write/read
+ * @param max total amount of data to send, padding with 0 if necessary
+ */
 void rf24::txrx(uint8_t *txdata, uint8_t *rxdata, uint8_t len, uint8_t max)
 {
     for (uint8_t ind=0; ind < len; ind++) {
@@ -265,7 +276,10 @@ void rf24::txrx(uint8_t *txdata, uint8_t *rxdata, uint8_t len, uint8_t max)
     }
 }
 
-/** Set config register */
+/** Set config register
+ * @param value register value for CONFIG
+ * @note contents of cfg_crc and cfg_irq are applied against this before writing.
+ */
 void rf24::setConfig(uint8_t value)
 {
     // Note IRQ mask bits are active when 0 in the CONFIG register, so we have to invert cfg_irq
@@ -273,7 +287,7 @@ void rf24::setConfig(uint8_t value)
 }
 
 /** Set IRQ mask for specified conditions
- *  intcodes is any combination of RF24_IRQ_* #defines
+ * @param intcodes any combination of RF24_IRQ_* #defines
  */
 void rf24::setIrqMask(uint8_t intcodes)
 {
@@ -326,6 +340,10 @@ void rf24::setCRCOff()
  *  Speed, Power Amplifier power, Channel
  */
 /** Service functions to support user-friendly speed specifications. */
+
+/** Convert an unsigned long numeric bitrate into the requisite register value
+ * @param rfspd unsigned long on-air bitrate in bits/second
+ */
 uint8_t rf24::_convertSpeedToReg(uint32_t rfspd)
 {
     if (rfspd >= 2000000UL)
@@ -335,6 +353,9 @@ uint8_t rf24::_convertSpeedToReg(uint32_t rfspd)
     return RF24_SPEED_250KBPS;
 }
 
+/** Convert an on-air bitrate register value to an unsigned long bitrate in bits/second
+ * @param rfspdreg 8-bit register value corresponding to RF24_SPEED_*
+ */
 uint32_t rf24::_convertRegToSpeed(uint8_t rfspdreg)
 {
     switch (rfspdreg) {
@@ -349,11 +370,17 @@ uint32_t rf24::_convertRegToSpeed(uint8_t rfspdreg)
     }
 }
 
+/** Set on-air bitrate using unsigned long bits/second
+ * @param rfspd unsigned long on-air bitrate in bits/second
+ */
 void rf24::setSpeed(uint32_t rfspd)
 {
     setSpeedReg(_convertSpeedToReg(rfspd));
 }
 
+/** Set on-air bitrate using register value (RF24_SPEED_* #defines)
+ * @param setting 8-bit register value corresponding to RF24_SPEED_*
+ */
 void rf24::setSpeedReg(uint8_t setting)
 {
     uint8_t rfset;
@@ -374,11 +401,15 @@ void rf24::setSpeedReg(uint8_t setting)
     writeReg(RF_SETUP, rfset);
 }
 
+/** Get current on-air bitrate (as unsigned long bits/second representation)
+ */
 uint32_t rf24::getSpeed()
 {
     return (_convertRegToSpeed(getSpeedReg()));
 }
 
+/** Get current on-air bitrate (as 8-bit register value corresponding to RF24_SPEED_* #defines)
+ */
 uint8_t rf24::getSpeedReg()
 {
     uint8_t rfset;
@@ -388,6 +419,11 @@ uint8_t rf24::getSpeedReg()
     return(rfspeed);
 }
 
+/** Get current on-air bitrate in string form
+ * @param buf A supplied character buffer used to store the string value
+ * @note The user MUST supply a character buffer at least 8 bytes long!
+ * @note The function returns 'buf' when finished.
+ */
 char* rf24::getSpeedString(char *buf)
 {
     getSpeedReg();  // Sets the 'rfspeed' variable as a side-effect
@@ -410,6 +446,9 @@ char* rf24::getSpeedString(char *buf)
     return(buf);
 }
 
+/** Set on-air Power Amplifier gain
+ * @param setting 8-bit register value corresponding to RF24_POWER_* #defines
+ */
 void rf24::setPowerReg(uint8_t setting)
 {
     uint8_t rfset;
@@ -426,6 +465,9 @@ void rf24::setPowerReg(uint8_t setting)
     writeReg(RF_SETUP, rfset);
 }
 
+/** Get on-air Power Amplifier gain setting in 8-bit register form corresponding
+ *  to RF24_POWER_* #defines
+ */
 uint8_t rf24::getPowerReg()
 {
     uint8_t rfset;
@@ -437,6 +479,11 @@ uint8_t rf24::getPowerReg()
     return(rfpower);
 }
 
+/** Get current Power Amplifier gain setting in string form
+ * @param buf A supplied character buffer used to store the string value
+ * @note The user MUST supply a character buffer at least 8 bytes long!
+ * @note The function returns 'buf' when finished.
+ */
 char* rf24::getPowerString(char *buf)
 {
     getPowerReg();  // Sets rfpower as a side-effect
@@ -475,6 +522,8 @@ void rf24::setChannel(uint8_t chan)
     writeReg(RF_CH, chan);
 }
 
+/** Read the current RF channel from the register map.
+ */
 uint8_t rf24::getChannel(void)
 {
     return readReg(RF_CH);
@@ -488,6 +537,9 @@ uint8_t rf24::getChannel(void)
  *  used for effective addressable I/O between devices.
  */
 
+/** Set the expected packet write & read size for all 6 pipes.
+ * @param size size of packet in bytes, maximum RF24_MAX_SIZE.
+ */
 void rf24::setPacketSize(uint8_t size)
 {
     packetSize = size;
@@ -499,6 +551,7 @@ void rf24::setPacketSize(uint8_t size)
     writeReg(RX_PW_P5, packetSize);
 }
 
+/** Return the current packet size as saved during the last call to setPacketSize() */
 uint8_t rf24::getPacketSize()
 {
     return packetSize;
@@ -510,11 +563,15 @@ uint8_t rf24::getRetransmits()
     return ( (readReg(OBSERVE_TX) >> ARC_CNT) & 0x0F );
 }
 
+/** Report # of complete packet losses since the last time we switched channels.
+ *  Note: MAX_RT interrupt is raised every time this occurs.
+ */
 uint8_t rf24::getFailedSends()
 {
     return ( (readReg(OBSERVE_TX) >> PLOS_CNT) & 0x0F );
 }
 
+/** Reset PLOS_CNT value */
 void rf24::resetFailedSends()
 {
     uint8_t chan;
@@ -548,6 +605,9 @@ void rf24::setRxAddr(uint8_t id, const void *addr)
     digitalWrite(cePin, ceSet);
 }
 
+/** Disable a pipe from receiving data--pipes are re-enabled by setting their
+ *  RXADDR with setRxAddr() above.
+ */
 void rf24::disableQueue(uint8_t id)
 {
     boolean ceSet;
@@ -716,6 +776,7 @@ uint8_t rf24::chipState()
 }
 
 /** Get the reason why the IRQ pin was triggered.
+ *  Interpret return value with RF24_IRQ_* #defines.
  */
 uint8_t rf24::getReason()
 {
@@ -725,20 +786,27 @@ uint8_t rf24::getReason()
     return ( (reg >> 4) & 0x07 );
 }
 
-/** Did the IRQ pin trigger for the reason(s) specified (in intcode)?
+/** Did the IRQ pin trigger for the reason(s) specified?
+ * @param intcode IRQ interrupt code from RF24_IRQ_* #defines.
  */
 boolean rf24::getReason(uint8_t intcode)
 {
     return ( (getReason() & intcode) == intcode );
 }
 
-/** Disable transmit and receive. 900nA current draw. */
+/** Disable transmit and receive. 900nA current draw.
+ *  Transitioning out of this mode requires up to 4.5ms to allow
+ *  crystal oscillator to stabilize.
+ */
 void rf24::powerDown()
 {
     setConfig(0);
 }
 
-/** Enter Standby-I mode.  26uA current draw. */
+/** Enter Standby-I mode.  26uA current draw.
+ *  Crystal oscillator partly running, 130us required to transition out
+ *  of Standby-I and enter active PTX/PRX mode.
+ */
 void rf24::standby()
 {
     uint8_t curstate;
@@ -758,8 +826,9 @@ void rf24::standby()
 }
 
 /** Enable transmit Standby-II mode (disables receive).  320uA current draw until TX begins.
-    If TX FIFO has data, radio transmission will automatically commence after Standby-II mode
-    is achieved.
+ *  If TX FIFO has data, radio transmission will automatically commence after Standby-II mode
+ *  is achieved.
+ *  Active TX can take 7.0-11.3mA depending on Power Amplifier setting.
  */
 void rf24::enableTx()
 {
@@ -799,7 +868,11 @@ void rf24::continualTx()
     writeReg(REUSE_TX_PL);
 }
 
-/** Enable receive (disables transmit) */
+/** Enable receive (disables transmit)
+ *  Power consumption is 12.6-13.5mA depending on bitrate.
+ *  This mode is required to receive any data, and may account for the highest aggregate
+ *    power usage of the entire board when used in embedded low-power listening applications.
+ */
 void rf24::enableRx()
 {
     uint8_t reg;
@@ -899,8 +972,8 @@ void rf24::send(void *data, uint8_t size)
 }
 
 /** Read a packet
- *@param data Pointer to buffer to read packet into
- *@param size the size of the buffer, max amount of data to read
+ * @param data Pointer to buffer to read packet into
+ * @param size the size of the buffer, max amount of data to read
  */
 void rf24::read(void *data, uint8_t size) 
 {
@@ -962,17 +1035,17 @@ boolean rf24::available(uint32_t timeout)
 /** Call-and-Response I/O */
 boolean rf24::sendAndRead(void *msg, uint8_t size, uint32_t timeout)
 {
-    send(msg);
+    send(msg, size);
     while (isSending());
     if (acked) {
 	/* want a response */
         enableRx();
 	if (available(timeout)) {
 	    read(msg, size);
-            standby();
+            standby();  // return to Standby-I so we are not wasting power in RX mode indefinitely
 	    return true;
 	} else {
-            standby();
+            standby();  // return to Standby-I so we are not wasting power in RX mode indefinitely
 	    return false;
 	}
     }
@@ -1010,7 +1083,6 @@ void rf24::scan(uint8_t *chans, uint8_t start, uint8_t count, uint8_t depth)
 	    writeReg(RF24_RF_CH, chan);
 	    enableRx();
 	    delayMicroseconds(170);
-	    chipEnable();
 
 	    if (readReg(RF24_RPD) & 0x01) {
 	        chans[chan]++;
