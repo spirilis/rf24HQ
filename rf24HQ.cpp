@@ -277,7 +277,12 @@ void rf24::setConfig(uint8_t value)
  */
 void rf24::setIrqMask(uint8_t intcodes)
 {
+    uint8_t reg;
+
     cfg_irq = intcodes & 0x07;
+    reg = readReg(CONFIG);  // Save original CONFIG settings
+    reg &= ~(0x07 << 4);  // Clear IRQ entries so setConfig() can re-add them
+    setConfig(reg);
 }
 
 
