@@ -100,7 +100,8 @@ boolean rf24::begin(uint32_t dataRate, Print *debugPrint)
 
     SPI.begin();
     SPI.setDataMode(SPI_MODE0);
-    SPI.setClockDivider(SPI_CLOCK_DIV2);
+    SPI.setClockDivider(SPI_CLOCK_DIV64);
+    chipDisable();
 
     acked = false;
     sending = false;
@@ -153,7 +154,7 @@ void rf24::readReg(uint8_t reg, void *value, uint8_t size)
 {
     chipSelect();
     transfer(R_REGISTER | (REGISTER_MASK & reg));
-    rx(value,size);
+    rxlsbfirst(value,size);
     chipDeselect();
 }
 
@@ -163,7 +164,7 @@ uint8_t rf24::readReg(uint8_t reg)
     uint8_t data;
     chipSelect();
     transfer(R_REGISTER | (REGISTER_MASK & reg));
-    data = transfer(0);
+    data = transfer(NOP);
     chipDeselect();
 
     return data;
@@ -214,7 +215,7 @@ void rf24::tx(const void *data, uint8_t len, uint8_t max)
 	if (ind < max) {
 	    transfer(((uint8_t *)data)[ind]);
 	} else {
-	    transfer(0);
+	    transfer(NOP);
 	}
     }
 }
@@ -240,10 +241,21 @@ void rf24::rx(void *data, uint8_t len, uint8_t max)
 
     for (uint8_t ind=0; ind < len; ind++) {
 	if (ind < max) {
-	    ((uint8_t *)data)[ind] = transfer(0);
+	    ((uint8_t *)data)[ind] = transfer(NOP);
 	} else {
-	    transfer(0);
+	    transfer(NOP);
 	}
+    }
+}
+
+void rf24::rxlsbfirst(void *data, uint8_t len, uint8_t max)
+{
+    for (uint8_t ind=0; ind<len; ind++) {
+        if (ind < max) {
+            ((uint8_t *)data)[len-ind-1] = transfer(NOP);
+        } else {
+            transfer(NOP);
+        }
     }
 }
 
@@ -261,17 +273,17 @@ void rf24::txrx(uint8_t *txdata, uint8_t *rxdata, uint8_t len, uint8_t max)
 		if (txdata != NULL) {
 		    rxdata[ind] = transfer(txdata[ind]);
 		} else {
-		    rxdata[ind] = transfer(0);
+		    rxdata[ind] = transfer(NOP);
 		}
 	    } else {
 		if (txdata != NULL) {
 		    transfer(txdata[ind]);
 		} else {
-		    transfer(0);
+		    transfer(NOP);
 		}
 	    }
 	} else {
-	    transfer(0);
+	    transfer(NOP);
 	}
     }
 }
@@ -294,7 +306,7 @@ void rf24::setIrqMask(uint8_t intcodes)
     uint8_t reg;
 
     cfg_irq = intcodes & 0x07;
-    reg = readReg(CONFIG);  // Save original CONFIG settings
+    reg = readReg(RF24_CONFIG);  // Save original CONFIG settings
     reg &= ~(0x07 << 4);  // Clear IRQ entries so setConfig() can re-add them
     setConfig(reg);
 }
@@ -745,7 +757,7 @@ uint8_t rf24::chipState()
         return RF24_STATE_NOTPRESENT;
     }
     ceSet = digitalRead(cePin);
-    cfg = readReg(CONFIG);
+    cfg = readReg(RF24_CONFIG);
 
     if ( (cfg & (1<<PWR_UP)) == 0x00 ) {
         return RF24_STATE_POWERDOWN;
@@ -960,13 +972,13 @@ void rf24::send(void *data, uint8_t size)
     curstate = chipState();
 
     writeReg(FLUSH_TX);
+    if (curstate != RF24_STATE_STANDBY_II && curstate != RF24_STATE_PTX) {
+        enableTx();  // Activate PTX mode
+    }
     chipSelect();
     transfer(W_TX_PAYLOAD);
     tx(data, packetSize, size);
     chipDeselect();
-    if (curstate != RF24_STATE_STANDBY_II && curstate != RF24_STATE_PTX) {
-        enableTx();  // Activate PTX mode
-    }
 
     sending = true;
 }

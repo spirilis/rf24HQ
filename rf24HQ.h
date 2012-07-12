@@ -91,6 +91,7 @@ public:
     void tx(const void *data, uint8_t len, uint8_t max=RF24_MAX_SIZE);
     void txlsbfirst(const void *data, uint8_t len);
     void rx(void *data, uint8_t len, uint8_t max=RF24_MAX_SIZE);
+    void rxlsbfirst(void *data, uint8_t len, uint8_t max=RF24_MAX_SIZE);
     void txrx(uint8_t *data, uint8_t *in, uint8_t len, uint8_t max=RF24_MAX_SIZE);
     void readReg(uint8_t reg, void *value, uint8_t size=1);
     uint8_t readReg(uint8_t reg);
@@ -146,6 +147,7 @@ public:
     boolean available(uint32_t timeout);
     void send(void *data, uint8_t size=RF24_MAX_SIZE);
     void read(void *data, uint8_t size=RF24_MAX_SIZE);
+    uint8_t readQueue();
     boolean sendAndRead(void *msg, uint8_t size=RF24_MAX_SIZE, uint32_t timeout=100);
 
     void scan(uint8_t *chans, uint8_t start=0, uint8_t count=125, uint8_t depth=128);
